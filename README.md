@@ -14,6 +14,50 @@
 
 ---
 
+### 🤖 Настройка Telegram-бота (Самый важный первый шаг!)
+
+Для управления фермой вам необходим собственный персональный бот в Telegram и ваш числовой идентификатор (Chat ID). Это делается бесплатно за 1 минуту:
+
+#### Шаг 1. Создание бота через [@BotFather](https://t.me/BotFather)
+1. В поиске Telegram найдите официального бота **`@BotFather`** (с синей галочкой) и нажмите **Start**.
+2. Отправьте команду:
+   ```text
+   /newbot
+   ```
+3. Введите читаемое имя для вашего бота (например: `Моя Ферма` или `Farm Controller`).
+4. Введите юзернейм для бота, который **обязательно** должен оканчиваться на `bot` (например: `my_lks_farm_bot`).
+5. **@BotFather** поздравит вас и пришлёт сообщение с API-токеном вида:
+   ```text
+   1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567
+   ```
+   *Скопируйте этот токен целиком.*
+
+#### Шаг 2. Получение вашего Chat ID через [@id_bot](https://t.me/id_bot)
+1. В поиске Telegram найдите бота **`@id_bot`** (или **`@userinfobot`**) и нажмите **Start** (или отправьте `/start`).
+2. Бот мгновенно пришлёт ответ с вашими данными. Найдите строку **Your user ID** (или `Id:`):
+   ```text
+   123456789
+   ```
+   *Скопируйте это число — это ваш уникальный Chat ID.*
+
+#### Шаг 3. Активация диалога со своим ботом (Обязательно!)
+* **Критически важно:** Перейдите в созданного вами бота (ссылка на него будет в сообщении от @BotFather, например `t.me/my_lks_farm_bot`) и **нажмите кнопку START (`/start`)**.
+* *Если не нажать Start в своём боте, Telegram запретит ему отправлять вам сообщения и меню!*
+
+#### Шаг 4. Вставка данных в ферму
+У вас есть два удобных способа привязать бота к ферме:
+
+* **Способ А (Вручную перед отправкой на телефон):**
+  Откройте файл `farm_V2.9.2.10.txt` в любом текстовом редакторе и вставьте скопированные значения в строки 5 и 6:
+  ```bash
+  TG_TOKEN="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567"
+  TG_CHAT_ID="123456789"
+  ```
+* **Способ Б (Интерактивно при первом запуске):**
+  Если оставить в файле дефолтные строки `__INSERT_HERE__`, скрипт при первом старте в Termux сам красиво запросит ввод токена и Chat ID прямо в консоли и сохранит их в защищённый файл `~/farm_database/state/tg_config.txt` с правами доступа `600` (доступно только вам).
+
+---
+
 ### 📦 Система команд и батчей (Batches) — Полное руководство
 
 В архитектуре FARM ROOT каждый бот может содержать **неограниченное количество независимых пакетов команд (батчей)**. Каждый батч имеет собственный таймер, собственный тип запуска, собственное количество повторов и команду.
@@ -218,6 +262,41 @@ The farm is controlled entirely via Telegram using interactive inline keyboards 
 
 ---
 
+### 🤖 Telegram Bot Setup (Crucial First Step!)
+
+To manage the farm, you need your own Telegram bot and your numerical user Chat ID. This takes 1 minute:
+
+#### Step 1: Create Bot via [@BotFather](https://t.me/BotFather)
+1. In Telegram search, open **`@BotFather`** and press **Start**.
+2. Send command:
+   ```text
+   /newbot
+   ```
+3. Enter a display name (e.g. `My Farm Controller`).
+4. Enter a username ending in `bot` (e.g. `my_lks_farm_bot`).
+5. Copy the generated **API Token**:
+   ```text
+   1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567
+   ```
+
+#### Step 2: Get your Chat ID via [@id_bot](https://t.me/id_bot)
+1. Open **`@id_bot`** (or **`@userinfobot`**) and press **Start**.
+2. Copy your numerical **Your user ID** (e.g. `123456789`).
+
+#### Step 3: Start your newly created bot (Mandatory!)
+* Go to your newly created bot (link from BotFather, e.g. `t.me/my_lks_farm_bot`) and **press START (`/start`)**.
+* *If you do not press start in your bot, Telegram will forbid the bot from messaging you!*
+
+#### Step 4: Configure the Farm
+* **Option A (Manual):** Edit lines 5 & 6 in `farm_V2.9.2.10.txt`:
+  ```bash
+  TG_TOKEN="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567"
+  TG_CHAT_ID="123456789"
+  ```
+* **Option B (First-run Prompt):** Leave `__INSERT_HERE__` intact. On first run, the script will prompt you in Termux console and safely store your credentials in `~/farm_database/state/tg_config.txt` with mode `600`.
+
+---
+
 ### 📦 Command & Batch System (Batches) — Full Guide
 
 In FARM ROOT, each bot can have **multiple independent command batches**. Each batch has its own timer, trigger schedule, repetition count, and target command.
@@ -258,7 +337,7 @@ Examples:
 - `/addbot` — Bot creation wizard or syntax guide.
 - `/restart` — Safe restart via watchdog supervisor.
 - `/exp` — Export current script file as `.txt` to Telegram.
-- `/force_update` — Apply attached script file immediately.
+- `/force_update` — Attach a script file with this caption to trigger immediate upgrade.
 
 ---
 
