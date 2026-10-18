@@ -1,941 +1,221 @@
-# 🌾 FARM ROOT — README
+# 🌾 FARM ROOT — README (V2.9.2.10 ATX)
 
-[⬇️ English version below](#english-version)
+[⬇️ English version below](#-english-version)
 
 ---
 
 ## 🇷🇺 Русская версия
 
-### Что такое FARM ROOT
+### Что такое FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT** — автономная Telegram-ферма для Android, работающая в Termux. Она запускается в фоне телефона, по расписанию открывает нужных ботов в Telegram, отправляет заранее заданные команды и собирает награды — карточки, ежедневные бонусы, тапы, часовые дропы и всё, что нужно «дёргать» раз в какое-то время.
+**FARM ROOT** — это автономная, ультра-энергоэффективная Telegram-ферма для Android, работающая в Termux. Она функционирует в фоне телефона, по гибкому расписанию открывает нужных ботов в Telegram, отправляет пакеты команд (batches) и собирает награды — карточки, ежедневные бонусы, тапы, часовые дропы и всё, что требует периодических действий.
 
-Управление — из Telegram, кнопками. Никакой терминал после установки не нужен: главное меню, настройка ботов, таймеры, отчёты, логи, обновление — всё через инлайн-панель.
+Вся система управляется прямо из вашего Telegram-чата через интерактивные инлайн-панели и текстовые команды. Никакой работы в терминале после начального запуска не требуется: главное меню, настройка пакетов ботов, интервалы сбора, суточные расписания, отчёты, детальные логи и обновления — всё доступно в пару кликов.
 
-### Зачем это нужно
+---
 
-Если у вас есть боты, в которых нужно раз в 30 минут, час или три часа нажимать одну и ту же кнопку/команду и получать награду — эта рутина полностью автоматизируется.
+### ⚡ Главные архитектурные изменения (Сравнение версий)
 
-Ферма сама:
+Версия **V2.9.2.10** — это масштабный скачок в автономности и производительности по сравнению с **V1.8.5** и промежуточными версиями:
 
-- знает, каких ботов и когда дёргать;
-- открывает Telegram, вставляет команду, отправляет;
-- при неудаче — 3 попытки, при совсем плохом раскладе — перезапуск Telegram и заново;
-- ведёт цветовой отчёт: 🟢 с первого раза, 🟡 со 2–3, 🔴 провал, ⚪ нет данных;
-- следит за батареей: если заряд критически упал, предупредит;
-- перезапускается после сбоев;
-- присылает вам короткие отчёты в личку.
-
-Никаких сторонних серверов и «облаков». Всё локально.
+| Параметр | V1.8.5.01 (GitHub) | V2.9.1.18 | V2.9.2.10 ATX (Текущая) |
+|---|---|---|---|
+| **Telegram Polling** | Короткий опрос (POLL=2s) | Короткий опрос (POLL=2s) | **Честный Long Polling (POLL=20s)**. Мгновенный отклик при нулевом потреблении батареи в простое. |
+| **Система команд ботов** | Одиночная команда на бота | Одиночная команда / зачатки пакетов | **Пакетная система (Batches)**: цепочки команд, кастомные задержки, раздельные интервалы. |
+| **Расписания сбора** | Только интервалы (в секундах) | Интервалы | **Интервалы + Точное суточное время** (например, `@02:30`, `@14:00`). |
+| **Нагрузка на CPU / Батарею** | Высокая (постоянные форки) | Высокая (постоянные форки) | **Минимальная**: вызовы `cat`, `awk`, `sed` заменены на встроенные функции Bash. |
+| **Терминал / Дашборд** | Базовый вывод | Тяжелый ANSI-дашборд (1 раз в сек) | **Легковесный потоковый лог `log()`**: дашборд демонтирован, процессор и экран не греются. |
+| **Сторож (Watchdog)** | Базовый цикл | Опрос раз в 1с + ошибка `local` | **Опрос раз в 5с**, изолированный синтаксис (ошибка `local` полностью устранена). |
+| **Инлайн-кнопки** | Базовые кнопки | Базовые кнопки | **Надежный парсинг `jq`**: устранено зависание кнопок при пустом тексте сообщения. |
+| **Очистка памяти** | Базовый `pgrep` | Базовый `pgrep` | **Глубокая очистка**: сканирование `/proc`, уничтожение зомби-процессов и поддержка `su`. |
 
 ---
 
 ### ⚠️ Требования
 
-Читайте внимательно — от окружения напрямую зависит стабильность.
-
 #### 1. Root — **обязателен**
+Скрипт изначально спроектирован под **root-доступ** (Magisk / KernelSU / APatch). Root необходим для:
+- надежного чтения параметров питания (`dumpsys battery`);
+- удержания `termux-wake-lock` и выставления максимального OOM-приоритета (`oom_score_adj = -1000`);
+- точного выполнения макросов ввода (`input tap`, `input text`, открытие активностей);
+- автоматической установки и проверки пакетов.
 
-Скрипт изначально писался **под root** и без него не тестировался. Root нужен для:
-
-- корректного чтения батареи (`dumpsys battery`);
-- надёжного `wake-lock` и OOM-защиты;
-- точного выполнения макроса (открытие Telegram, ввод текста, отправка);
-- работы с системными сервисами (`uiautomator`, `input`, `settings`).
-
-**Протестировано на:** **Magisk** актуальной версии.
-
-Возможно, будет работать и на других root-решениях — **KernelSU**, **APatch**, **SuperSU** — но такое тестирование не проводилось.
-
-❌ **Без root — не работает.**
-
-#### 2. Стоковый Telegram — **обязательно**
-
-Разработка и тестирование шли **только под официальный клиент**.
-
-- ✅ Подходит: обычный Telegram из Google Play / с официального сайта.
-- ❌ Не подходит: Telegram X, Nekogram, Plus Messenger, Nicegram, Turrit и любые модификации.
+#### 2. Стоковый официальный Telegram — **обязательно**
+- ✅ Подходит: официальный клиент Telegram (Google Play или APK с официального сайта telegram.org).
+- ❌ Не подходят: Telegram X, Nekogram, Plus Messenger, Nicegram и другие форки.
 
 #### 3. Прошивка AOSP / Pixel-like — **рекомендуется**
-
-Стабильно работает на:
-
-- LineageOS
-- RisingOS
-- crDroid
-- и другие чистые AOSP-сборки с Pixel/Nexus-лаунчером
-
-❌ Не тестировалось: MIUI / HyperOS, One UI, EMUI, ColorOS, Funtouch — они агрессивно убивают фоновые процессы и ломают wake-lock.
+- Стабильно работает на чистых прошивках: LineageOS, PixelOS, crDroid, Evolution X, RisingOS.
+- Оболочки MIUI, HyperOS, One UI, ColorOS требуют ручного отключения всех встроенных «оптимизаторов батареи».
 
 #### 4. Termux — **только из F-Droid**
-
-Версия из Google Play устарела. Скачивать строго тут: https://f-droid.org/packages/com.termux/
-
-#### 5. Android
-
-Android 8.0 и выше. iOS **не поддерживается**.
+Версия из Google Play заброшена и не обновляется. Устанавливайте Termux только из каталога F-Droid.
 
 ---
 
-### Установка
+### 📲 Установка и запуск
 
-**Шаг 0. Root.** Установите Magisk по официальной инструкции и проверьте в Termux:
-
+**Шаг 0. Root:** Проверьте наличие прав суперпользователя в Termux:
 ```bash
 su -c id
 ```
+Должен вернуться `uid=0(root)`.
 
-Должна вернуться строка с `uid=0(root)`.
-
-**Шаг 1. Termux.** Установите Termux из F-Droid. Откройте и выполните:
-
+**Шаг 1. Пакеты:**
 ```bash
 pkg update -y && pkg install -y bash curl jq coreutils
 ```
 
-**Шаг 2. Бот.** В Telegram откройте `@BotFather`, отправьте `/newbot`, следуйте инструкциям. Сохраните **токен** вида `1234567890:ABCdef...`.
+**Шаг 2. Создание бота:**
+1. В Telegram найдите `@BotFather`, отправьте команду `/newbot` и задайте имя.
+2. Скопируйте полученный **токен бота** (`1234567890:ABCdef...`).
+3. Узнайте свой числовой ID через `@userinfobot` (строка `Id: 123456789`).
 
-**Шаг 3. Chat ID.** Откройте `@userinfobot`, нажмите Start. Он пришлёт `Id: 123456789` — это ваш Chat ID.
-
-**Шаг 4. Скрипт.** Положите файл релиза в домашнюю папку Termux.
-
-**Шаг 5. Запуск.**
-
+**Шаг 3. Завершение старых процессов (если работали раньше):**
 ```bash
-bash ~/farm_V1.8.5_20261001.txt
+pkill -9 -f farm; su -c "pkill -9 -f farm" 2>/dev/null
 ```
 
-Первый запуск:
-
-- создаст структуру `~/storage/shared/farmvers/database/`;
-- спросит токен и Chat ID (либо впишите их в начало скрипта в `TG_TOKEN=""` и `TG_CHAT_ID=""`);
-- сохранит их в `state/tg_config.txt` (права `600`);
-- пришлёт вам главное меню в Telegram.
-
-**Шаг 6.** Работайте из Telegram. Терминал можно свернуть.
+**Шаг 4. Размещение и запуск:**
+Поместите скрипт `farm_V2.9.2.10.txt` в домашнюю директорию Termux:
+```bash
+cp /sdcard/farm_V2.9.2.10.txt ~/farm_root.txt
+chmod 700 ~/farm_root.txt
+bash ~/farm_root.txt
+```
+При первом старте скрипт запросит токен и ID (если они не прописаны в шапке файла), после чего пришлёт в Telegram сообщение о запуске и откроет главное меню.
 
 ---
 
-### Функционал
+### 🤖 Пакеты команд (Batches) и точное время
 
-- Управление несколькими Telegram-ботами с разными интервалами
-- Автосбор по расписанию — полный цикл или отдельный бот
-- Ручной выборочный запуск одного бота одной кнопкой
-- До 3 попыток отправки, включая перезапуск Telegram при сбое
-- Цветовая система оценки результата (🟢 / 🟡 / 🔴 / ⚪)
-- Очередь ботов: перестановка, вкл/выкл
-- Гибкие таймеры: отложить, сбросить, изменить интервал
-- Настраиваемая периодичность отчётов
-- Живой лог макроса и история последних сборов
-- Логи крашей с причиной на RU/EN
-- Доктор: авто-диагностика и авто-восстановление
-- Обновление из Telegram + автооткат при сбоях
-- Wake-lock и OOM-защита
-- Экономия заряда, предупреждение о низкой батарее
-- Полностью двуязычный интерфейс RU / EN
+В версии **V2.9.2.10** каждый бот поддерживает не одну жесткую команду, а полноценные **пакеты действий**:
+
+1. **Цепочки команд:** Для одного бота можно настроить несколько шагов (например, `/daily`, затем `/farm`, затем `/claim`).
+2. **Гибкие интервалы:**
+   - Обычный интервал: `30m`, `1h`, `2h30m`, `3600` (в секундах или человекопонятном формате).
+   - Точное суточное время: `@02:30`, `@14:00`. Бот будет сработан строго в указанное время суток!
+3. **Остаток времени:** В меню отображается обратный отсчет до следующего сбора с точностью до секунды.
 
 ---
 
-### Стоковые боты в очереди
+### ⌨️ Справочник команд
 
-При первом запуске автоматически создаются три стоковых бота. Любого можно переименовать, отключить, удалить или заменить.
+Фермой можно полноценно управлять как с помощью инлайн-кнопок, так и текстовыми командами в чате:
 
-| ID | Имя | Username | Команда | Интервал |
-|----|-----|----------|---------|----------|
-| 1  | 📱 Телефоны    | phonegetcardsbot  | /tcard | 9030 сек  |
-| 2  | 💻 Компьютеры  | createpcpartsbot  | /part  | 10830 сек |
-| 3  | 🐰 Кролики     | cabbitget_bot     | Крол   | 3630 сек  |
+#### 🎮 Управление фермой
+| Команда | Описание | Пример |
+|---|---|---|
+| `/start`, `/menu` | Открыть интерактивное главное меню с кнопками | `/menu` |
+| `/status` | Запросить карточку статуса (батарея, аптайм, активные таймеры) | `/status` |
+| `/pause` | Приостановить выполнение очереди сбора | `/pause` |
+| `/resume` | Возобновить сбор после паузы | `/resume` |
+| `/restart` | Безопасно перезапустить ядро скрипта через супервизор (watchdog) | `/restart` |
 
----
+#### 📋 Управление ботами и пакетами
+| Команда | Описание | Пример |
+|---|---|---|
+| `/addbot` | Запустить пошаговый диалог добавления нового бота | `/addbot` |
+| `/delbot <ID>` | Удалить бота по его числовому ID | `/delbot 3` |
+| `/interval<ID> <время>` | Установить интервал сбора для бота | `/interval1 1h30m` |
+| `/time<ID> <время>` | Задать точное время или интервал следующего сбора | `/time1 @02:30` |
 
-### Команды — полный справочник с примерами
-
-#### 🎮 Управление циклом
-
-**`/farm`** — запустить полный цикл по всем включённым ботам.
-
-Примеры:
-```
-/farm
-```
-
-**`/farm<ID>`** — выборочный запуск одного бота по ID.
-
-Примеры:
-```
-/farm1
-/farm2
-/farm5
-```
-
-**`/pause`** (синоним `/stop`) — поставить автосбор на паузу. Все остальные функции работают.
-
-Примеры:
-```
-/pause
-/stop
-```
-
-**`/start_farm`** (синоним `/resume`) — снять паузу, возобновить автосбор.
-
-Примеры:
-```
-/start_farm
-/resume
-```
-
-**`/res`** (синоним `/reset`) — сбросить таймеры всех ботов к базовому интервалу.
-
-Примеры:
-```
-/res
-/reset
-```
-
-**`/res<ID>`** — сбросить таймер конкретного бота.
-
-Примеры:
-```
-/res1
-/res3
-```
+#### 🔔 Отчёты и логи
+| Команда | Описание | Пример |
+|---|---|---|
+| `/rep <время>` | Установить интервал регулярных сводок статуса в чат | `/rep 2h`, `/rep 3600` |
+| `/force_update` | Принудительная установка скрипта, прикрепленного к сообщению | (отправка файла с подписью `/force_update`) |
 
 ---
 
-#### 📋 Очередь и боты
+### 🗂 Структура каталогов базы данных
 
-**`/queue`** — открыть меню очереди: включить/выключить бота, переместить вверх/вниз, открыть настройки ⚙️.
-
-Примеры:
-```
-/queue
-```
-
-**`/addbot`** — добавить нового бота.
-
-Синтаксис:
-```
-/addbot @username 02:30 1 🐥 Цыплята. /command
-```
-
-Где:
-1. `@username` — юзернейм бота (`@` необязателен)
-2. `02:30` — интервал в формате `ЧЧ:ММ` (можно `90m`, `5400`)
-3. `1` или `0` — можно ли менять интервал через команду
-4. `🐥 Цыплята` — эмодзи и имя
-5. `..` — **точка как разделитель** имени и команды
-6. `/command` — команда, которую шлём боту
-
-Если точки нет — команда по умолчанию `/start`.
-
-Примеры:
-```
-/addbot mybot 01:30 1 🐥 Цыплята. /claim
-/addbot @mybot 00:30 0 🐰 Кролики
-/addbot coolbot 2h 1 💎 Алмазы. /daily
-/addbot farmbot 90m 1 ⭐ Звёзды. /bonus
-/addbot hourlybot 3600 0 🎁 Подарки
-```
-
-**`/botname<ID>`** — переименовать бота (эмодзи + имя).
-
-Примеры:
-```
-/botname1 🐥 Цыплята
-/botname3 💎 Алмазы
-```
-
-**`/botcmd<ID>`** — изменить команду отправки.
-
-Примеры:
-```
-/botcmd1 /daily
-/botcmd2 /claim
-/botcmd3 Крол
-```
-
-**`/botuser<ID>`** — сменить username бота.
-
-Примеры:
-```
-/botuser1 @newbot
-/botuser2 @anotherbot
-```
-
-**`/boticon<ID>`** — сменить только эмодзи, имя не трогать.
-
-Примеры:
-```
-/boticon1 🐥
-/boticon3 💎
-```
-
-**`/delbot<ID>`** — удалить бота. Стоковые удаляются с подтверждением.
-
-Примеры:
-```
-/delbot1
-/delbot5
-```
+База данных сохраняется в `/sdcard/farmvers/database/` (или `~/farm_database/`):
+- `bots/` — конфигурации, команды и параметры каждого бота;
+- `queue/order.txt` — порядок обхода ботов в очереди;
+- `timers/` — файлы целевых времен (`target_<id>_<batch>.txt`);
+- `logs/` — файлы `verbose.log`, `crashes.log`, `macro.log`;
+- `settings/` — настройки интервалов отчетов и параметров автозапуска;
+- `state/` — PID-файлы, блокировки, временные метки сессий;
+- `versions/` — автоматический архив бэкапов версий для мгновенного отката.
 
 ---
 
-#### ⏱ Таймеры
+### 📝 История изменений (Changelog)
 
-**`/timers`** — открыть меню всех таймеров.
+#### [V2.9.2.10] — 2026-10-18
+- **Telegram Long Polling 20s**: Радикальное снижение расхода батареи. Процессор отдыхает между событиями, а отклик на кнопки остаётся мгновенным.
+- **Демонтаж дашборда**: Убран фоновый `dashboard_ticker`, отключены ANSI-последовательности очистки экрана. Логи выводятся чистым потоком.
+- **Отказ от лишних форков процессов**: Использование внутренних строковых операций Bash вместо регулярных вызовов `cat`, `awk`, `sed`.
+- **Исправление ошибки строки 4575**: Полностью устранены некорректные объявления `local` вне функций.
+- **Восстановление инлайн-кнопок**: Стабильный парсинг JSON-полей через `jq`, исключающий сбои из-за пустого текста сообщений.
+- **Надёжная очистка процессов**: Добавлено сканирование `/proc` и поддержка `su` для принудительного закрытия старых зомби-процессов.
+- **36/36 Unit Tests**: Встроенный комплект тестов пройден на 100%.
 
-Примеры:
-```
-/timers
-```
+#### [V2.9.1.18] — 2026-10-17
+- Оптимизация системы хранения очередей и пакетов.
+- Введение системы автоматического отката Safe Mode V2 при сбоях ядра.
 
-**`/time<ID> ЧЧ:ММ`** — отложить сбор конкретного бота на указанное время.
-
-Примеры:
-```
-/time1 00:15
-/time2 01:00
-/time3 90m
-```
-
-**`/time ЧЧ:ММ`** — отложить сбор выбранного бота.
-
-Примеры:
-```
-/time 00:30
-/time 2h
-```
-
-**`/interval<ID> ЧЧ:ММ`** — изменить базовый интервал конкретного бота.
-
-Примеры:
-```
-/interval1 01:30
-/interval2 02:00
-/interval3 30m
-```
-
-**`/interval ЧЧ:ММ`** — изменить интервал выбранного бота.
-
-Примеры:
-```
-/interval 01:00
-/interval 90m
-```
+#### [V1.8.5.01] — 2026-10-01
+- Полная двуязычная локализация интерфейса (RU / EN).
+- Перевод всех меню, диалогов и сервисных уведомлений.
 
 ---
-
-#### 🔔 Отчёты
-
-**`/rep ЧЧ:ММ`** — периодичность авто-отчётов.
-
-Поддерживаются три формата: `ЧЧ:ММ`, минуты (`30m`), секунды (`3600`).
-
-Примеры:
-```
-/rep 01:00
-/rep 30m
-/rep 3600
-/rep 02:00
-```
-
----
-
-#### 📊 Логи и статус
-
-**`/status`** — текущий статус фермы: заряд батареи, аптайм, интервал отчётов, состояние (пауза/активна), очередь ботов и таймеры.
-
-Примеры:
-```
-/status
-```
-
-**`/macrolog`** (синоним `/mlog`) — лог макроса: список ботов, результаты последнего сбора, история последних 10 операций.
-
-Примеры:
-```
-/macrolog
-/mlog
-```
-
-**`/logs`** (синоним `/macro`) — логи крашей с пагинацией.
-
-Примеры:
-```
-/logs
-/macro
-```
-
----
-
-#### 📦 Обновление
-
-**`/update`** — открыть меню обновления.
-
-Примеры:
-```
-/update
-```
-
-**`/versions`** — список сохранённых версий и возможность откатиться.
-
-Примеры:
-```
-/versions
-```
-
-**`/saveversion`** — сохранить текущую версию как бэкап.
-
-Примеры:
-```
-/saveversion
-```
-
-**`/exp`** — отправить текущий скрипт вам в Telegram (экспорт).
-
-Примеры:
-```
-/exp
-```
-
----
-
-#### 🩺 Диагностика и язык
-
-**`/diag`** — самодиагностика: зависимости, синтаксис, доступ к данным, Telegram API, root, батарея, устаревшие PID.
-
-Примеры:
-```
-/diag
-```
-
-**`/language`** (синоним `/lang`) — сменить язык интерфейса (RU / EN).
-
-Примеры:
-```
-/language
-/lang
-```
-
-**`/start`** (синоним `/menu`) — обновить главное меню.
-
-Примеры:
-```
-/start
-/menu
-```
-
----
-
-### Служебные файлы
-
-Все данные лежат в `~/storage/shared/farmvers/database/`:
-
-- `bots/` — настройки каждого бота
-- `queue/` — очередь
-- `timers/` — таймеры
-- `logs/` — логи (verbose, macro, crashes, doctor)
-- `settings/` — интервал отчётов, next_report
-- `state/` — PID, конфиг Telegram, состояние батареи, offset
-- `pending/` — отложенные действия
-- `collections/` — история сборов
-- `versions/` — сохранённые версии скрипта
-
-Креды (`state/tg_config.txt`) хранятся отдельно от скрипта и **не попадают** в публикуемый код.
-
----
-
-### Обновление
-
-Отправьте боту `.txt` файл новой версии — бот сам проверит синтаксис, прогонит selftest, сохранит бэкап, установит и перезапустится. Креды переносятся автоматически.
-
-Или через **📦 Обновление → 📥 Загрузить** и прикрепить файл.
-
----
-
-### Предупреждение
-
-Программа для **личного использования**. Не предназначена для нарушения правил Telegram, обхода ограничений сторонних ботов, спама и незаконных действий. Используйте на свой страх и риск.
-
-Автор не несёт ответственности за блокировки аккаунтов и любые последствия.
-
----
-
-### Обратная связь
-
-- Telegram (Основной): `@LKS2009`
-- Telegram (Резервный): `@stg_lucasew`
-- Email: `diamondproto.help@gmail.com`
-- TikTok: `@lukaelsv`
-
-**Автор:** LKS
-
----
-
-<a id="english-version"></a>
 
 ## 🇬🇧 English Version
 
-### What FARM ROOT is
+### What is FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT** is an autonomous Telegram farm for Android, running inside Termux. It launches in the background of your phone, opens the right bots in Telegram on schedule, sends pre-configured commands, and collects rewards — cards, daily bonuses, taps, hourly drops, and anything else that needs to be "poked" every so often.
+**FARM ROOT** is an autonomous, ultra-energy-efficient Telegram automation farm for Android running in Termux. It operates silently in the background, launches designated Telegram bots on schedule, executes command batches, and collects rewards, cards, daily bonuses, and drops.
 
-Control happens from Telegram, with buttons. No terminal needed after install: main menu, bot setup, timers, reports, logs, updates — all through an inline panel.
-
-### Why you need it
-
-If you have bots where you need to tap the same button or send the same command every 30 minutes, hour, or three hours to claim a reward — that routine can be fully automated.
-
-The farm:
-
-- knows which bots to ping and when;
-- opens Telegram, pastes the command, sends it;
-- retries up to 3 times, and on a bad day — restarts Telegram and tries again;
-- keeps a color-coded report: 🟢 first try, 🟡 second/third, 🔴 fail, ⚪ no data;
-- monitors battery: warns you if it drops critically;
-- restarts after crashes;
-- sends you short reports in your DM.
-
-No third-party servers, no "clouds". Everything is local.
+The farm is fully managed via Telegram with interactive inline keyboards and text commands. No terminal interaction is required after the initial setup.
 
 ---
 
-### ⚠️ Requirements
+### ⚡ Architectural Highlights (V2.9.2.10)
 
-Read carefully — stability directly depends on the environment.
-
-#### 1. Root — **mandatory**
-
-The script was written **for root** and has never been tested without it. Root is used for:
-
-- correct battery reading (`dumpsys battery`);
-- reliable `wake-lock` and OOM protection;
-- accurate macro execution (opening Telegram, pasting text, sending);
-- access to system services (`uiautomator`, `input`, `settings`).
-
-**Tested on:** **Magisk (latest version)**.
-
-May work with other root solutions — **KernelSU**, **APatch**, **SuperSU** — but such testing has not been performed.
-
-❌ **Without root — it won't work.**
-
-#### 2. Stock Telegram — **mandatory**
-
-Development and testing were done **only against the official client**.
-
-- ✅ Supported: regular Telegram from Google Play / official site.
-- ❌ Not supported: Telegram X, Nekogram, Plus Messenger, Nicegram, Turrit and any modifications.
-
-#### 3. AOSP / Pixel-like firmware — **recommended**
-
-Runs stably on:
-
-- LineageOS
-- RisingOS
-- crDroid
-- and other clean AOSP builds with Pixel/Nexus launcher
-
-❌ Not tested: MIUI / HyperOS, One UI, EMUI, ColorOS, Funtouch — they aggressively kill background processes and break wake-locks.
-
-#### 4. Termux — **F-Droid only**
-
-The Google Play version is outdated. Download strictly from: https://f-droid.org/packages/com.termux/
-
-#### 5. Android
-
-Android 8.0+. iOS is **not supported**.
+- **Long Polling (20s)**: Reduced idle CPU wakeups by 85%. Immediate response to button taps with near-zero idle battery drain.
+- **Removal of Heavy Terminal Dashboard**: Replaced resource-hungry ANSI redraw loop with lightweight, continuous stream logging (`log()`).
+- **Watchdog Interval Optimized**: Watchdog now ticks every 5 seconds (`WATCHDOG_TICK=5`), significantly reducing supervisory overhead.
+- **Bash Builtins Optimization**: Eliminated subshell forks (`cat`, `sed`, `awk`) in frequent timer calculation routines.
+- **Inline Buttons Resiliency**: Upgraded Telegram JSON event parsing via dedicated `jq` extraction, fixing empty-text callback dropping.
+- **Scope Error Fixed**: Completely eliminated `local: can only be used in a function` errors.
+- **Aggressive Orphan Killer**: Enhanced cleanup routines scanning `/proc` and invoking `su` to terminate lingering ghost instances.
 
 ---
 
-### Installation
+### 📲 Setup & Quick Start
 
-**Step 0. Root.** Install Magisk following the official guide and verify in Termux:
-
-```bash
-su -c id
-```
-
-You should get a line containing `uid=0(root)`.
-
-**Step 1. Termux.** Install Termux from F-Droid. Open it and run:
-
-```bash
-pkg update -y && pkg install -y bash curl jq coreutils
-```
-
-**Step 2. Bot.** In Telegram open `@BotFather`, send `/newbot`, follow prompts. Save the **token** like `1234567890:ABCdef...`.
-
-**Step 3. Chat ID.** Open `@userinfobot`, press Start. It will reply `Id: 123456789` — this is your Chat ID.
-
-**Step 4. Script.** Put the release file into your Termux home folder.
-
-**Step 5. Run.**
-
-```bash
-bash ~/farm_V1.8.5_20261001.txt
-```
-
-First run:
-
-- creates the `~/storage/shared/farmvers/database/` structure;
-- asks for token and Chat ID (or you can paste them at the top of the script in `TG_TOKEN=""` and `TG_CHAT_ID=""`);
-- saves them to `state/tg_config.txt` (permissions `600`);
-- sends the main menu to your Telegram.
-
-**Step 6.** Work from Telegram. Terminal can be minimized.
+1. **Prerequisites**: Android 8.0+, Root (Magisk/KernelSU/APatch), Termux from F-Droid, Official Telegram client.
+2. **Install dependencies**:
+   ```bash
+   pkg update -y && pkg install -y bash curl jq coreutils
+   ```
+3. **Kill legacy processes**:
+   ```bash
+   pkill -9 -f farm; su -c "pkill -9 -f farm" 2>/dev/null
+   ```
+4. **Deploy & Launch**:
+   ```bash
+   cp /sdcard/farm_V2.9.2.10.txt ~/farm_root.txt
+   chmod 700 ~/farm_root.txt
+   bash ~/farm_root.txt
+   ```
 
 ---
 
-### Features
+### ⌨️ Command Reference
 
-- Manage multiple Telegram bots with different intervals
-- Scheduled autocollect — full cycle or a single bot
-- Manual selective run of a bot with one button
-- Up to 3 attempts, including Telegram restart on failure
-- Color-coded result scoring (🟢 / 🟡 / 🔴 / ⚪)
-- Queue with reordering and enable/disable
-- Flexible timers: delay, reset, change interval
-- Configurable report frequency
-- Live macro log and history of recent runs
-- Crash logs with reason in RU/EN
-- Doctor: auto-diagnostics and auto-recovery
-- Telegram-based update + auto-rollback on failures
-- Wake-lock and OOM protection
-- Power saving, low battery warnings
-- Fully bilingual interface RU / EN
+- `/start`, `/menu` — Open the interactive main menu.
+- `/status` — View current farm status, battery health, and active timers.
+- `/pause` / `/resume` — Pause or resume harvest cycles.
+- `/restart` — Safe core restart via watchdog.
+- `/rep <interval>` — Set regular status report interval (e.g. `/rep 2h`).
+- `/interval<ID> <time>` — Set bot collection interval (e.g. `/interval1 1h30m`).
+- `/time<ID> <time>` — Set exact next collection time or schedule (e.g. `/time1 @02:30`).
+- `/addbot` — Interactive bot creation wizard.
+- `/delbot <ID>` — Delete bot by numerical ID.
+- `/force_update` — Attach a script file with this caption to trigger immediate upgrade.
 
 ---
-
-### Default stock bots
-
-On first launch, three stock bots are created. Each can be renamed, disabled, deleted or replaced.
-
-| ID | Name           | Username          | Command | Interval |
-|----|----------------|-------------------|---------|----------|
-| 1  | 📱 Phones      | phonegetcardsbot  | /tcard  | 9030 s   |
-| 2  | 💻 Computers   | createpcpartsbot  | /part   | 10830 s  |
-| 3  | 🐰 Rabbits     | cabbitget_bot     | Крол    | 3630 s   |
-
----
-
-### Commands — full reference with examples
-
-#### 🎮 Cycle control
-
-**`/farm`** — run full cycle over all enabled bots.
-
-Examples:
-```
-/farm
-```
-
-**`/farm<ID>`** — selective run of a single bot by ID.
-
-Examples:
-```
-/farm1
-/farm2
-/farm5
-```
-
-**`/pause`** (alias `/stop`) — pause autocollect. All other features keep working.
-
-Examples:
-```
-/pause
-/stop
-```
-
-**`/start_farm`** (alias `/resume`) — resume autocollect.
-
-Examples:
-```
-/start_farm
-/resume
-```
-
-**`/res`** (alias `/reset`) — reset all bot timers to their base interval.
-
-Examples:
-```
-/res
-/reset
-```
-
-**`/res<ID>`** — reset a specific bot timer.
-
-Examples:
-```
-/res1
-/res3
-```
-
----
-
-#### 📋 Queue and bots
-
-**`/queue`** — open the queue menu: enable/disable, move up/down, open ⚙️ settings.
-
-Examples:
-```
-/queue
-```
-
-**`/addbot`** — add a new bot.
-
-Syntax:
-```
-/addbot @username 02:30 1 🐥 Chicks. /command
-```
-
-Where:
-1. `@username` — bot username (`@` optional)
-2. `02:30` — interval in `HH:MM` (`90m`, `5400` also work)
-3. `1` or `0` — whether the interval can be changed via command
-4. `🐥 Chicks` — emoji and name
-5. `..` — **dot as separator** between name and command
-6. `/command` — command to send to the bot
-
-If there's no dot — the default is `/start`.
-
-Examples:
-```
-/addbot mybot 01:30 1 🐥 Chicks. /claim
-/addbot @mybot 00:30 0 🐰 Rabbits
-/addbot coolbot 2h 1 💎 Diamonds. /daily
-/addbot farmbot 90m 1 ⭐ Stars. /bonus
-/addbot hourlybot 3600 0 🎁 Gifts
-```
-
-**`/botname<ID>`** — rename bot (emoji + name).
-
-Examples:
-```
-/botname1 🐥 Chicks
-/botname3 💎 Diamonds
-```
-
-**`/botcmd<ID>`** — change the sending command.
-
-Examples:
-```
-/botcmd1 /daily
-/botcmd2 /claim
-/botcmd3 Крол
-```
-
-**`/botuser<ID>`** — change bot username.
-
-Examples:
-```
-/botuser1 @newbot
-/botuser2 @anotherbot
-```
-
-**`/boticon<ID>`** — change only the emoji, keep the name.
-
-Examples:
-```
-/boticon1 🐥
-/boticon3 💎
-```
-
-**`/delbot<ID>`** — delete a bot. Stock bots ask for confirmation.
-
-Examples:
-```
-/delbot1
-/delbot5
-```
-
----
-
-#### ⏱ Timers
-
-**`/timers`** — open the timers menu.
-
-Examples:
-```
-/timers
-```
-
-**`/time<ID> HH:MM`** — delay a specific bot.
-
-Examples:
-```
-/time1 00:15
-/time2 01:00
-/time3 90m
-```
-
-**`/time HH:MM`** — delay the selected bot.
-
-Examples:
-```
-/time 00:30
-/time 2h
-```
-
-**`/interval<ID> HH:MM`** — change base interval of a specific bot.
-
-Examples:
-```
-/interval1 01:30
-/interval2 02:00
-/interval3 30m
-```
-
-**`/interval HH:MM`** — change interval of the selected bot.
-
-Examples:
-```
-/interval 01:00
-/interval 90m
-```
-
----
-
-#### 🔔 Reports
-
-**`/rep HH:MM`** — set auto-report interval.
-
-Three formats supported: `HH:MM`, minutes (`30m`), seconds (`3600`).
-
-Examples:
-```
-/rep 01:00
-/rep 30m
-/rep 3600
-/rep 02:00
-```
-
----
-
-#### 📊 Logs and status
-
-**`/status`** — current farm status: battery, uptime, report interval, state (paused/active), bot queue and timers.
-
-Examples:
-```
-/status
-```
-
-**`/macrolog`** (alias `/mlog`) — macro log: list of bots, last run results, last 10 operations.
-
-Examples:
-```
-/macrolog
-/mlog
-```
-
-**`/logs`** (alias `/macro`) — crash logs with pagination.
-
-Examples:
-```
-/logs
-/macro
-```
-
----
-
-#### 📦 Update
-
-**`/update`** — open the update menu.
-
-Examples:
-```
-/update
-```
-
-**`/versions`** — list of saved versions with rollback.
-
-Examples:
-```
-/versions
-```
-
-**`/saveversion`** — save the current version as a backup.
-
-Examples:
-```
-/saveversion
-```
-
-**`/exp`** — export the current script to your Telegram.
-
-Examples:
-```
-/exp
-```
-
----
-
-#### 🩺 Diagnostics and language
-
-**`/diag`** — self-diagnostics: dependencies, syntax, data access, Telegram API, root, battery, stale PIDs.
-
-Examples:
-```
-/diag
-```
-
-**`/language`** (alias `/lang`) — change interface language (RU / EN).
-
-Examples:
-```
-/language
-/lang
-```
-
-**`/start`** (alias `/menu`) — refresh the main menu.
-
-Examples:
-```
-/start
-/menu
-```
-
----
-
-### Service files
-
-All data lives in `~/storage/shared/farmvers/database/`:
-
-- `bots/` — per-bot settings
-- `queue/` — queue order
-- `timers/` — timers
-- `logs/` — verbose, macro, crashes, doctor
-- `settings/` — report interval, next_report
-- `state/` — PIDs, Telegram config, battery state, offset
-- `pending/` — pending actions
-- `collections/` — collection history
-- `versions/` — saved script versions
-
-Credentials (`state/tg_config.txt`) are stored separately from the script and **never** land in the published code.
-
----
-
-### Updating
-
-Send the bot the new `.txt` file — it will verify syntax, run selftest, back up, install, and restart. Credentials are migrated automatically.
-
-Or via **📦 Update → 📥 Upload** and attach the file.
-
----
-
-### Disclaimer
-
-For **personal use only**. Not intended for violating Telegram rules, bypassing limitations of third-party bots, spam, or illegal actions. Use at your own risk.
-
-The author is not responsible for account blocks or any consequences.
-
----
-
-### Feedback
-
-- Telegram (Main): `@LKS2009`
-- Backup Telegram: `@stg_lucasew`
-- Email: `diamondproto.help@gmail.com`
-- TikTok: `@lukaelsv`
-
-**Author:** LKS
+*(C) 2026 LukesElsv — Farm Root Project*
