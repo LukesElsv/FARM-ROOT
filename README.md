@@ -8,7 +8,7 @@
 
 ### Что такое FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT** — это автономная, ультра-энергоэффективная система автоматизации и сбора для Telegram-ботов на Android, работающая в окружении **Termux**. Скрипт функционирует в фоновом режиме, удерживает OOM-приоритет, по гибким расписаниям открывает целевых ботов в Telegram, отправляет заданные цепочки команд и пакетов (batches) и собирает награды (ежедневные бонусы, карточки, тапы, периодический сбор).
+**FARM ROOT** — это автономная, ультра-энергоэффективная система автоматизации и сбора для Telegram-ботов на Android, работающая в окружении **Termux**. Скрипт функционирует в фоновом режиме, удерживает OOM-приоритет, по гибким расписаниям открывает целевых ботов в Telegram, отправляет заданные цепочки команд и пакетов (batches) и собирает награды (ежедневные бонусы, карточки, периодический сбор команд и наград).
 
 Управление фермой происходит полностью через Telegram — с помощью интерактивных инлайн-панелей и текстовых команд. После первого запуска открывать терминал не требуется: управление ботами, создание батчей, настройка расписаний, отчёты, логи, резервное копирование и обновления доступны прямо в чате с вашим ботом.
 
@@ -25,7 +25,7 @@
    /newbot
    ```
 3. Введите читаемое имя для вашего бота (например: `Моя Ферма` или `Farm Controller`).
-4. Введите юзернейм для бота, который **обязательно** должен оканчиваться на `bot` (например: `my_lks_farm_bot`).
+4. Введите юзернейм для бота, который **обязательно** должен оканчиваться на `bot` (например: `my_farm_bot`).
 5. **@BotFather** поздравит вас и пришлёт сообщение с API-токеном вида:
    ```text
    1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567
@@ -41,7 +41,7 @@
    *Скопируйте это число — это ваш уникальный Chat ID.*
 
 #### Шаг 3. Активация диалога со своим ботом (Обязательно!)
-* **Критически важно:** Перейдите в созданного вами бота (ссылка на него будет в сообщении от @BotFather, например `t.me/my_lks_farm_bot`) и **нажмите кнопку START (`/start`)**.
+* **Критически важно:** Перейдите в созданного вами бота (ссылка на него будет в сообщении от @BotFather, например `t.me/my_farm_bot`) и **нажмите кнопку START (`/start`)**.
 * *Если не нажать Start в своём боте, Telegram запретит ему отправлять вам сообщения и меню!*
 
 #### Шаг 4. Вставка данных в ферму
@@ -77,7 +77,7 @@
      - `@23:59` — ежедневно без одной минуты полночь.
 3. **Количество повторов за запуск (`xN`):**
    - `x1` (по умолчанию) — отправить команду один раз;
-   - `x2`, `x5`, `x10` — отправить команду N раз подряд с паузой `BATCH_REPEAT_DELAY` (по умолчанию 1 сек). Удобно для тапов или многократного сбора.
+   - `x2`, `x5`, `x10` — отправить команду N раз подряд с паузой `BATCH_REPEAT_DELAY` (по умолчанию 1 сек). Удобно для циклической отправки команд или многократного сбора.
 4. **Счётчик оставшихся выполнений (`rN` — remaining runs):**
    - `r0` (по умолчанию) — бессрочный батч (работает бесконечно);
    - `r1`, `r5`, `r10` — временный/акционный батч. После N успешных срабатываний батч **автоматически удаляется** из конфигурации бота.
@@ -107,9 +107,9 @@
    *(Создаст 2 батча: `b1` с интервалом 2:30 и командой `/claim`, `b2` с интервалом 2:30 и командой `/crack`)*
 3. **Бот с разными независимыми батчами:**
    ```text
-   /addbot @coolbot 1 🐥 Цыплята. b1 01:00 /daily b2 03:00 x5 /tap
+   /addbot @coolbot 1 🐥 Цыплята. b1 01:00 /daily b2 03:00 x5 /bonus
    ```
-   *(`b1` собирает `/daily` каждый час; `b2` раз в 3 часа нажимает `/tap` 5 раз подряд)*
+   *(`b1` собирает `/daily` каждый час; `b2` раз в 3 часа отправляет `/bonus` 5 раз подряд)*
 4. **Бот с запуском по точному суточному времени:**
    ```text
    /addbot @coolbot 1 🐥 Цыплята. @14:30 /daily
@@ -181,7 +181,7 @@
 |---|---|---|---|
 | **Сетевой опрос (Telegram)** | Короткий опрос `POLL_WAIT=2` (запрос каждые 2 сек) | Короткий опрос `POLL_WAIT=2` (запрос каждые 2 сек) | **Энергосберегающий Long Polling `POLL_WAIT=20`** (до 20 сек). Процессор смартфона спит в простое; отклик на кнопки мгновенный. |
 | **Система команд** | Одиночная команда на бота | Поддержка батчей, но с частыми сбоями | **Полнофункциональный движок пакетов (Batches)**: `@HH:MM`, `xN`, `rN`, мастер `addcmd`, парсер однострочников. |
-| **Интерфейс консоли** | Базовый вывод в терминал | Тяжелый дашборд с ежесекундным тикером `dashboard_ticker` и ANSI-перерисовкой `[2J[H` | **Полный демонтаж дашборда**: тикер отключен, ANSI-коды удалены. Логи идут чистым, лёгким потоком `log()`, не нагревая дисплей и процессор. |
+| **Интерфейс консоли (Дашборд)** | Базовый вывод в терминал | Тяжелый дашборд с ежесекундным тикером `dashboard_ticker` и ANSI-перерисовкой | **Оптимизация дашборда**: дашборд не просто убран, а оптимизирован — вместо тяжёлого интерфейса с ежесекундной перерисовкой экрана он теперь выводится простым текстом (потоковый лог `log()`). Это в разы меньше нагружает процессор и аккумулятор смартфона. |
 | **Сторож (Watchdog)** | Базовый супервизор | Опрос каждую 1 сек + ошибка `line 4575: local: can only be used in a function` | **Опрос раз в 5 сек (`WATCHDOG_TICK=5`)**, чистый POSIX-синтаксис без нелегальных `local`. Ошибка ликвидирована. |
 | **Инлайн-кнопки меню** | Базовый разбор | Разбор через TSV/read (ломал кнопки при пустом тексте сообщения) | **Индивидуальный парсинг через `jq`**: 100% стабильность инлайн-кнопок и диалогов меню. |
 | **Системные вызовы** | Регулярные форки `cat`, `sed`, `awk` | Форки `cat`, `sed`, `awk` в цикле таймеров | **Встроенные операции Bash**: строковые подстановки `${var//...}`, `printf -v`, `read -r` вместо тысяч процессов `fork()`. |
@@ -235,7 +235,7 @@
 
 #### [V2.9.2.10] — 2026-10-18
 - **Telegram Long Polling 20s**: Процессор переведён в режим глубокого сна в периоды простоя, сетевые запросы сокращены на 85%.
-- **Демонтаж дашборда**: Удалён фоновый тикер `dashboard_ticker`, отключены управляющие ANSI-последовательности экрана, логи идут чистым потоком.
+- **Оптимизация дашборда**: Дашборд оптимизирован и переведён из тяжёлого графического интерфейса в простой текстовый вывод. Экран больше не перерисовывается каждую секунду, убран фоновый тикер, что существенно снижает нагрузку на смартфон.
 - **Исправление синтаксической ошибки**: Устранена ошибка `local: can only be used in a function` на строке 4575 и сопутствующих участках.
 - **Восстановление инлайн-кнопок**: Стабильное извлечение JSON-полей через `jq`, исключающее пропуск callback-событий.
 - **Оптимизация производительности**: Замена внешних вызовов `cat`, `awk`, `sed` в ядре на встроенные операции Bash.
@@ -256,7 +256,7 @@
 
 ### What is FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT** is an autonomous, ultra-energy-efficient Telegram automation farm for Android running in **Termux**. It operates silently in the background, keeps OOM immunity, opens designated Telegram bots according to customizable schedules, sends multi-step command batches, and collects daily rewards, bonus cards, and drops.
+**FARM ROOT** is an autonomous, ultra-energy-efficient Telegram automation farm for Android running in **Termux**. It operates silently in the background, keeps OOM immunity, opens designated Telegram bots according to customizable schedules, sends multi-step command batches, and collects daily rewards, bonus cards, and routine actions.
 
 The farm is controlled entirely via Telegram using interactive inline keyboards and text commands. No terminal interactions are needed after the initial launch.
 
@@ -273,7 +273,7 @@ To manage the farm, you need your own Telegram bot and your numerical user Chat 
    /newbot
    ```
 3. Enter a display name (e.g. `My Farm Controller`).
-4. Enter a username ending in `bot` (e.g. `my_lks_farm_bot`).
+4. Enter a username ending in `bot` (e.g. `my_farm_bot`).
 5. Copy the generated **API Token**:
    ```text
    1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ_1234567
@@ -284,7 +284,7 @@ To manage the farm, you need your own Telegram bot and your numerical user Chat 
 2. Copy your numerical **Your user ID** (e.g. `123456789`).
 
 #### Step 3: Start your newly created bot (Mandatory!)
-* Go to your newly created bot (link from BotFather, e.g. `t.me/my_lks_farm_bot`) and **press START (`/start`)**.
+* Go to your newly created bot (link from BotFather, e.g. `t.me/my_farm_bot`) and **press START (`/start`)**.
 * *If you do not press start in your bot, Telegram will forbid the bot from messaging you!*
 
 #### Step 4: Configure the Farm
@@ -317,7 +317,7 @@ In FARM ROOT, each bot can have **multiple independent command batches**. Each b
 Examples:
 - `/addbot @coolbot 1 🐥 Chicks. /claim`
 - `/addbot @coolbot 1 🐥 Chicks. 02:30 /claim /crack`
-- `/addbot @coolbot 1 🐥 Chicks. b1 01:00 /daily b2 03:00 x5 /tap`
+- `/addbot @coolbot 1 🐥 Chicks. b1 01:00 /daily b2 03:00 x5 /bonus`
 - `/addbot @coolbot 1 🐥 Chicks. @14:30 /daily`
 - `/addbot @coolbot 1 🐥 Chicks. 02:00 r5 /promo`
 
@@ -344,7 +344,7 @@ Examples:
 ### ⚡ Architectural Highlights in V2.9.2.10 ATX
 
 - **Long Polling (20s)**: Allows CPU to enter deep sleep during idle periods, slashing battery consumption by >80%.
-- **Dashboard Removal**: Completely dismantled ANSI redraw loop and background ticker in favor of clean, continuous stream logs (`log()`).
+- **Dashboard Optimization**: The dashboard is not completely removed, but heavily optimized: instead of a resource-heavy UI with constant screen redraw loops, it now outputs simply as text logs. This dramatically reduces smartphone and CPU load.
 - **Scope Error Fixed**: Eliminated `local: can only be used in a function` error on line 4575.
 - **Inline Keyboards Repaired**: Converted callback processing to dedicated `jq` extraction, fixing dropped buttons.
 - **Built-in Bash Optimization**: Replaced repetitive `cat`, `awk`, `sed` subprocess forks with Bash parameter expansions.

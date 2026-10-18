@@ -8,7 +8,7 @@
 
 ### Что такое FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT V2.9.2.10 ATX — LKS EDITION** — это важнейший этап развития проекта, направленный на решение ключевых проблем стабильности и автономности: **экстремальную энергоэффективность**, **полное устранение жора аккумулятора на Android (Termux)**, **100% надёжность инлайн-кнопок Telegram** и **ликвидацию застарелых синтаксических ошибок**.
+**FARM ROOT V2.9.2.10 ATX** — это важнейший этап развития проекта, направленный на решение ключевых проблем стабильности и автономности: **экстремальную энергоэффективность**, **полное устранение жора аккумулятора на Android (Termux)**, **100% надёжность инлайн-кнопок Telegram** и **ликвидацию застарелых синтаксических ошибок**.
 
 В этом релизе переработан внутренний сетевой цикл ядра, демонтирован тяжёлый дашборд консоли, вызывавший перегрев и мерцание экрана, оптимизированы все вызовы к файловой системе и обеспечена безупречная работа многоуровневой системы команд и пакетов (Batches).
 
@@ -21,7 +21,7 @@
 | Параметр / Подсистема | Релиз V1.8.5.01BR (GitHub) | Версия V2.9.1.18 | Актуальный релиз V2.9.2.10 ATX | Влияние на систему |
 |---|---|---|---|---|
 | **Сетевой опрос (Telegram)** | Короткий опрос `POLL_WAIT=2` (запрос каждые 2 сек) | Короткий опрос `POLL_WAIT=2` (запрос каждые 2 сек) | **Энергосберегающий Long Polling `POLL_WAIT=20`** (до 20 сек) | Процессор смартфона больше не просыпается каждые 2 секунды. В режиме ожидания ядро спит, экономя более 85% заряда батареи. |
-| **Интерфейс консоли (Дашборд)** | Базовый терминальный вывод | Тяжелый дашборд: ежесекундный тикер `dashboard_ticker`, очистка и перерисовка экрана через ANSI (`[2J[H`), скрытие курсора | **Полный демонтаж дашборда**: тикер отключен, ANSI-коды удалены. Журнал выводится аккуратным, лёгким потоком `log()` | Ликвидирован постоянный фоновый процесс. Консоль Termux больше не мерцает, не забивает память и не греет процессор. |
+| **Интерфейс консоли (Дашборд)** | Базовый терминальный вывод | Тяжелый дашборд: ежесекундный тикер `dashboard_ticker`, очистка и перерисовка экрана через ANSI (`[2J[H`), скрытие курсора | **Оптимизация дашборда**: дашборд оптимизирован — вместо тяжёлого интерфейса с ежесекундной перерисовкой экрана он теперь выводится простым текстом. Это в разы меньше нагружает процессор и аккумулятор смартфона. | Ликвидирован постоянный фоновый тикер. Консоль Termux больше не мерцает, не забивает память и не греет процессор. |
 | **Сторожевой таймер (Watchdog)** | Опрос ядра каждые 1–2 сек | Опрос раз в 1 сек + ошибка `line 4575: local: can only be used in a function` | **Опрос раз в 5 сек (`WATCHDOG_TICK=5`)**, чистый синтаксис Bash без `local` вне функций | В 5 раз снижена нагрузка на супервизор; бесконечный спам ошибкой в консоль полностью ликвидирован. |
 | **Инлайн-кнопки меню** | Базовый парсинг | Разбор через `read` и табуляции (ломал обработку кнопок при пустом теле сообщения) | **Прямой поштучный парсинг полей через `jq`** | 100% стабильность инлайн-кнопок: ни один клик по меню больше не теряется и не «залипает». |
 | **Системные вызовы в цикле** | Множественные форки `cat`, `sed`, `awk` | Форки `cat`, `awk`, `sed` на каждом шаге проверки таймеров | **Встроенные строковые операции Bash**: `${var//...}`, `printf -v`, `read -r` | Исключены тысячи лишних вызовов `clone()`/`fork()` в минуту. |
@@ -47,7 +47,7 @@
 ```
 * **Пример 1 (Базовый):** `/addbot @coolbot 1 🐥 Цыплята. /claim`
 * **Пример 2 (Две команды подряд каждые 2ч 30м):** `/addbot @coolbot 1 🐥 Цыплята. 02:30 /claim /crack`
-* **Пример 3 (Разные интервалы и повторы):** `/addbot @coolbot 1 🐥 Цыплята. b1 01:00 /daily b2 03:00 x5 /tap`
+* **Пример 3 (Разные интервалы и повторы):** `/addbot @coolbot 1 🐥 Цыплята. b1 01:00 /daily b2 03:00 x5 /bonus`
 * **Пример 4 (Ежедневный сбор в 14:30):** `/addbot @coolbot 1 🐥 Цыплята. @14:30 /daily`
 * **Пример 5 (Временный батч на 5 раз):** `/addbot @coolbot 1 🐥 Цыплята. 02:00 r5 /promo`
 
@@ -101,14 +101,14 @@
 
 ### What is FARM ROOT V2.9.2.10 ATX
 
-**FARM ROOT V2.9.2.10 ATX — LKS EDITION** is a landmark architectural update designed to deliver **maximum energy efficiency**, **eliminate idle battery drain on Android (Termux)**, restore **100% Telegram inline keyboard reliability**, and resolve legacy syntax scope bugs.
+**FARM ROOT V2.9.2.10 ATX** is a landmark architectural update designed to deliver **maximum energy efficiency**, **eliminate idle battery drain on Android (Termux)**, restore **100% Telegram inline keyboard reliability**, and resolve legacy syntax scope bugs.
 
 ---
 
 ### Architectural Overhaul Highlights
 
 - **Telegram Long Polling (20s)**: Socket is held open up to 20s. CPU stays in Deep Sleep during idle periods, saving >80% battery.
-- **Terminal Dashboard Dismantled**: Retired resource-intensive background ticker and ANSI redraw loops in favor of lightweight, continuous streaming logs (`log()`).
+- **Dashboard Optimization**: The dashboard is not completely removed, but optimized: instead of a heavy UI with constant screen redraw loops, it now outputs simply as text logs. This dramatically reduces smartphone and CPU load.
 - **Watchdog Interval (5s)**: Supervisory tick lengthened to 5 seconds (`WATCHDOG_TICK=5`), cutting overhead by 5x.
 - **Scope Error Fixed**: Eliminated `local: can only be used in a function` error permanently.
 - **Inline Keyboards Repaired**: Converted callback handling to dedicated `jq` extraction, ensuring 100% button click registration.

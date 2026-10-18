@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # ==============================================================================
-# FARM ROOT V2.9.2.10 ATX — LKS EDITION (PUBLIC RELEASE)
+# FARM ROOT V2.9.2.10 ATX (PUBLIC RELEASE)
 # ==============================================================================
 TG_TOKEN="__INSERT_HERE__"
 TG_CHAT_ID="__INSERT_HERE__"
